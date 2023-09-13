@@ -1,6 +1,5 @@
 import os
-
-from mtcnn import MTCNN
+#from mtcnn import MTCNN
 import cv2
 
 def save_txt_with_image(output_path):
@@ -13,56 +12,38 @@ def detect_faces(image_path, save_path,crop_size=(512, 512)):
 
     # 加载人脸检测器的预训练模型
     # 初始化MTCNN模型
-    detector = MTCNN()
+    # detector = MTCNN()
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
 
     # 读取图像
     img = cv2.imread(image_path)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
 
     # 使用人脸检测器检测人脸
-    faces = detector.detect_faces(img_rgb)
+    # faces = detector.detect_faces(img_rgb)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.5, minNeighbors=5, minSize=(30, 30))
 
     # 定义 scale_factor 大小
-    scale_factor = 1.5
+    # scale_factor = 1.5
 
     # 裁剪并保存人脸
-    for face in faces:
-        confidence = face['confidence']
-        if confidence < 0.9:
-            continue
-
-        x, y, w, h = face['box']
-
+    for (x, y, w, h) in faces:
         # 计算裁剪区域的边界
         center_x = x + w // 2
         center_y = y + h // 2
+        half_width = crop_size[0] // 2
+        half_height = crop_size[1] // 2
+        roi_x1 = center_x - half_width
+        roi_y1 = center_y - half_height
+        roi_x2 = roi_x1 + crop_size[0]
+        roi_y2 = roi_y1 + crop_size[1]
 
-        # 计算缩放后的人脸尺寸
-        scaled_width = int(w * scale_factor)
-        scaled_height = int(h * scale_factor)
-
-        # 计算缩放后的人脸区域的边界
-        roi_x1 = max(0, center_x - scaled_width // 2)
-        roi_y1 = max(0, center_y - scaled_height // 2)
-        roi_x2 = min(img_rgb.shape[1], roi_x1 + scaled_width)
-        roi_y2 = min(img_rgb.shape[0], roi_y1 + scaled_height)
-
-        # 缩放并截取人脸区域
-        face = cv2.resize(img_rgb[roi_y1:roi_y2, roi_x1:roi_x2], crop_size, interpolation=cv2.INTER_LINEAR)
-
-        if face.size > 0:
-            # 创建一个新窗口并显示裁剪后的人脸图像
-            # cv2.namedWindow('Cropped Face', cv2.WINDOW_NORMAL)
-            # cv2.imshow('Cropped Face', face)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
-
-            # 裁剪并保存人脸
-            rgb_face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)  # 转换为 RGB 色彩空间
-            cv2.imwrite(save_path, rgb_face)
-            save_txt_with_image(save_path)  # 保存.txt文件
-
-        else:
-            print("无法检测到人脸")
+        # 裁剪并保存人脸
+        face = img[roi_y1:roi_y2, roi_x1:roi_x2]
+        cv2.imwrite(save_path, face)
+        save_txt_with_image(save_path)
 
 
