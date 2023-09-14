@@ -9,6 +9,8 @@ from face_detector import detect_faces
 from fashi_model import generate_image
 from adetailer import generate_ad_output
 from super_resolution import upscale_image
+from controlnet_model import process_image
+
 
 import time
 
@@ -52,7 +54,8 @@ def upload_photo():
         print("调用风格模型进行推理")
 
         # 調用風格模型
-        generate_image()
+        # generate_image()
+        process_image()
 
         print("---------------------------")
         print("高清修复中......")
