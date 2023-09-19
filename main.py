@@ -1,18 +1,10 @@
 import os
-import select
+import uuid
+import time
 
 from flask import Flask, request, jsonify,send_file
-from werkzeug.utils import secure_filename
-import subprocess
-
-from face_detector import detect_faces
-from fashi_model import generate_image
-from adetailer import generate_ad_output
-from super_resolution import upscale_image
-from controlnet_model import process_image
-
-
-import time
+from util.save_photo import save_photo_to_server
+from lora import train_lora
 
 
 app = Flask(__name__)
@@ -20,13 +12,15 @@ app = Flask(__name__)
 # 保存上传照片的目录
 UPLOAD_FOLDER = 'upload/origin'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-PRETECT_FOLDER = '/root/autodl-tmp/lora-scripts-main/train/face'
+PRETECT_FOLDER = '/root/autodl-tmp/lora-scripts-main/train/'
 app.config['PRETECT_FOLDER'] = PRETECT_FOLDER
 
 
 @app.route('/upload', methods=['POST'])
 def upload_photo():
     start_time = time.time()
+    user_id = str(uuid.uuid4())
+
     try:
         # 獲取上傳的照片
         content_type = request.content_type
@@ -42,7 +36,7 @@ def upload_photo():
         print("---------------------------")
         print("将照片保存到服务器中")
         # 保存照片到服务器中，方便後續處理
-        save_photo_to_server(photos)
+        save_photo_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
 
         # 訓練人臉lora
         print("---------------------------")
@@ -55,89 +49,96 @@ def upload_photo():
 
         # 調用風格模型
         # generate_image()
-        process_image()
+        # process_image()
 
         print("---------------------------")
         print("高清修复中......")
 
 
         # 高清修复
-        upscale_image()
+        # upscale_image()
 
         print("---------------------------")
         print("使用adetail进行人脸修复......")
 
         # 調用adetail對人臉進行修復
-        generate_ad_output()
+        # generate_ad_output()
+
+# -------------------------------------------------------------------
+        # 調用face_fusion進行人臉融合
+        print("切換環境並調用face_fusion")
+
+        import cv2
+        from util.image_util import get_first_image
+        from face_fusion import image_face_fusion
+        from util.virtualenv_util import activate_virtual_environment
+        # 切换虚拟环境
+        # 调用封装的函数
+        path = '/root/autodl-tmp/lora-scripts-main/train/face/10_face'
+        user_path = get_first_image(path)
+        # print(user_path)
+        template_path = 'final.png'
+
+        # 调用工具函数来切换虚拟环境
+        virtual_env_name = "modelscope"
+        activate_virtual_environment(virtual_env_name,template_path,user_path)
+
+        # finish
 
         # 返回处理后的结果
-        # result = {'message': 'Photo processed successfully'}
         end_time = time.time()
         execution_time = end_time - start_time
 
         print("接口调用到返回的时间：", execution_time, "秒")
 
-        return send_file('final.png', mimetype='image/png')
+        return send_file('result.png', mimetype='image/png')
 
         # return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)})
 
+@app.route('/people_upload', methods=['POST'])
+def process_photos():
+    start_time = time.time()
 
-def save_photo_to_server(photos):
-    print("---------------------------")
-    print("人脸数据预处理......")
-    for photo in photos:
-        if photo.filename == '':
-            continue  # 跳过没有文件名的字节对象
+    # 生成用户ID
+    user_id = str(uuid.uuid4())
 
-        # 获取上传照片的文件名
-        filename = secure_filename(photo.filename)
+    try:
+        # 获取上传的两个照片文件
+        content_type = request.content_type
+        if 'multipart/form-data' not in content_type:
+            return jsonify({'error': 'Invalid Content-Type'})
 
-        # 构建保存路径
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-        # 写入照片数据到本地文件
-        with open(save_path, 'wb') as f:
-            f.write(photo.read())
-
-        # 构建处理后的文件名
-        processed_filename = 'processed_' + filename
-
-        # 构建保存路径
-        save_pre_path = os.path.join(app.config['PRETECT_FOLDER'], "10_face/", processed_filename)
+        if 'photo_girl' not in request.files or 'photo_boy' not in request.files:
+            return jsonify({'error': 'Two photos not uploaded'})
 
 
-        # 执行人脸检测并保存结果图像
-        detect_faces(save_path, save_pre_path)
+        photo_girl = request.files.getlist('photo_girl')
+        photo_boy = request.files.getlist('photo_boy')
 
-def train_lora():
-    # 开始训练lora
-    print("开始训练人脸lora")
+        # 保存照片到服务器
 
-    # 执行 bash 命令并输出结果
-    # result = subprocess.run(
-    #     ["bash", "-c", "cd /root/autodl-tmp/lora-scripts-main && bash train.sh"],
-    #     capture_output=True, text=True, shell=True)
+        print("-----------------------------------------------------------------")
+        print("將照片保存到服務器")
+        save_photo_to_server(user_id+"_girl",photo_girl,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
+        save_photo_to_server(user_id+"_boy",photo_boy,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
 
-    # 切换目录到 /root/autodl-tmp/lora-scripts-main
-    os.chdir("/root/autodl-tmp/lora-scripts-main")
+        # 训练人脸Lora
+        print("-----------------------------------------------------------------")
+        print("開始訓練人臉lora")
+        train_lora(os.path.join(app.config['PRETECT_FOLDER'], user_id+"_girl"),user_id+"_girl")
+        train_lora(os.path.join(app.config['PRETECT_FOLDER'], user_id+"_boy"),user_id+"_boy")
 
-    # 获取当前目录地址并输出
-    curr_dir = os.getcwd()
-    print(f"当前目录地址: {curr_dir}")
 
-    # 执行 bash train.sh 命令
-    # train_cmd = ["bash", "-c", "bash train.sh"]
-    # result = subprocess.run(train_cmd, capture_output=True, text=True, shell=True, env=os.environ)
-    result = os.system("bash train.sh")
-    print(result)
+        # 调用风格模型进行推理等处理
 
-    # 输出结果
-    print("标准输出：", result.stdout)
-    print("错误输出：", result.stderr)
-    print("返回码：", result.returncode)
+        # 高清修复等其他处理
 
+        # 返回处理后的结果
+        return send_file('result.png', mimetype='image/png')
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 
 

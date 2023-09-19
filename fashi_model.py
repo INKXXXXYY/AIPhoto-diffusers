@@ -51,8 +51,8 @@ def generate_image():
         , generator = torch.Generator("cuda:1")
         , num_inference_steps = 28
         , guidance_scale = 7
-        , width = 512
-        , height = 512
+        , width = 1024
+        , height = 1536
     ).images[0]
 
     image.save('test.png')
