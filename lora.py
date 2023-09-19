@@ -1,14 +1,14 @@
 import subprocess
 import os
 os.environ["MKL_SERVICE_FORCE_INTEL"] = "1"
-import fileinput
-import sys
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # 设置使用的 GPU 设备编号
 
+from util.replace_para import replace_params
 
 # os.environ["MKL_THREADING_LAYER"] = "GNU"
 
 
-def train_lora(train_data_dir,output_name):
+def train_lora(train_data_dir,para_num,output_path):
     # 开始训练lora
     lora_script_path = "/root/autodl-tmp/lora-scripts-main"
 
@@ -19,29 +19,25 @@ def train_lora(train_data_dir,output_name):
     curr_dir = os.getcwd()
     print(f"当前目录地址: {curr_dir}")
 
-    # 设置要修改的参数和新值
-    params = {
-        b'train_data_dir': train_data_dir,
-        b'output_name': output_name
-    }
+    for num in range(para_num):
+        # 构建新的 train_data_dir 值
+        modified_train_data_dir = os.path.join(train_data_dir, str(num+1))
+        print(modified_train_data_dir)
 
-    # 读取文件内容并替换参数
-    with fileinput.FileInput('train.sh', inplace=True,backup='', mode='rb') as file:
-        for line in file:
-            for param, value in params.items():
-                if line.startswith(param):
-                    print(f'{param}={value}', file=sys.stdout)
-                    break
-            else:
-                print(line, end='')
+        # params = {
+        #     'train_data_dir': f'{modified_train_data_dir}',
+        #     # 'output_dir':output_path,
+        #     'output_name': f'{str(num)}'
+        # }
+        #
+        # # 替换 train.sh 文件中的参数
+        # replace_params('/root/autodl-tmp/lora-scripts-main/train.sh', params)
 
-    # 执行 bash train.sh 命令
-    result = subprocess.run(["bash", "train.sh"], capture_output=True, text=True)
-    # result = subprocess.run(["bash", "train.sh"])
-    print(result)
+        # 执行 bash train.sh 命令
+        result = subprocess.run(["bash", "/root/autodl-tmp/lora-scripts-main/train.sh",modified_train_data_dir,str(num),output_path], capture_output=True, text=True)
+        print(result)
 
-    # 输出结果
-    print("标准输出：", result.stdout)
-    print("错误输出：", result.stderr)
-    print("返回码：", result.returncode)
-
+        # 输出结果
+        print("标准输出：", result.stdout)
+        # print("错误输出：", result.stderr)
+        # print("返回码：", result.returncode)

@@ -45,5 +45,7 @@ def process_image():
         negative_prompt=negative_prompt,
         generator=generator,
         num_inference_steps=20,
+        width = 1024,
+        height = 1536
     ).images[0]
     output.save("test.png")
