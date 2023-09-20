@@ -22,6 +22,7 @@ def upscale_image():
     image = Image.open(image_path)
 
     print("输入照片进行修复")
-    images = pipe(prompt=prompt,negative_prompt=negative_prompt, image=image, strength=0.3, guidance_scale=7.5).images[0]
+    images = pipe(prompt=prompt, negative_prompt=negative_prompt, image=image, strength=0.3, guidance_scale=7.5).images[0]
     images.save("super_test.png")
     # images
+

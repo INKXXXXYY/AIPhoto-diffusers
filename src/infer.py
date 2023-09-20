@@ -1,10 +1,12 @@
-from ModelManager import ModelManager
+from src.ModelManager import ModelManager
 
 def infer(user_id):
+
     manager = ModelManager()
 
     # 添加模型
     manager.add_model("pose_model", "/root/autodl-tmp/controlnet/sd-controlnet-openpose")
+
     manager.add_model("diffuser_model1", "/root/autodl-tmp/diffusers_model/newchinese/newchinese1_3")
     manager.add_model("diffuser_model2", "/root/autodl-tmp/diffusers_model/newchinese/newchinese2_1")
     manager.add_model("diffuser_model3", "/root/autodl-tmp/diffusers_model/newchinese/newchinese3_1")
