@@ -1,11 +1,13 @@
-import datetime
+from datetime import datetime
 import json
 import os
 import warnings
+from typing import List
+
 
 import torch
-from PIL.Image import Image
-from diffusers import DPMSolverMultistepScheduler
+from PIL import Image
+from diffusers import DPMSolverMultistepScheduler, StableDiffusionImg2ImgPipeline
 
 
 class ImageGenerator:
@@ -52,7 +54,7 @@ class ImageGenerator:
                     output_image = pipe(
                         prompt if isinstance(prompt, str) else [prompt],  # 确保 prompt 是 str 或包含字符串的列表
                         pose_image,
-                        generator=generator,
+                        generator=generator.manual_seed(generator_seed),
                         negative_prompt=negative_prompt,
                         # generator_seed=generator_seed,
                         num_inference_steps=num_inference_steps,
@@ -75,7 +77,7 @@ class ImageGenerator:
 
                     print("--------------------------------------------")
                     print("對圖像進行超分修復")
-                    # self.upscale_image(user_id,model_id,output_image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5,strength=0.3)
+                    self.upscale_image(user_id,model_id,output_image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5)
 
 
                 except Exception as e:
@@ -83,7 +85,7 @@ class ImageGenerator:
                     error_message = f"An error occurred while processing the image with model {model_id}: {e}"
                     print(error_message)
 
-    def upscale_image(self,user_id,model_id,image_path,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5,strength=0.5):
+    def upscale_image(self,user_id,model_id,image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5):
 
         warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -91,6 +93,7 @@ class ImageGenerator:
 
         # 加载 diffuser 模型
         pipe = self.model_manager.models.get(model_id)
+        pipe = StableDiffusionImg2ImgPipeline.from_pretrained(self.model_manager.get_model_path(model_id), torch_dtype=torch.float16)
 
         # 将模型转移到GPU上进行推理
         device = "cuda"
@@ -99,16 +102,20 @@ class ImageGenerator:
         # 使用 diffuser_model 处理图像
         try:
             # 打开图像
-            image = Image.open(image_path)
+            # image = Image.open(image_path)
+            # 放大算法
+            image = image.resize((1024, 1536))
 
             print("输入照片进行修复")
             images = pipe(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 image=image,
-                strength=strength,
+                strength=0.3,
                 guidance_scale=guidance_scale,
-                num_inference_steps=num_inference_steps
+                num_inference_steps=num_inference_steps,
+                # width=1024,
+                # height=1536
             ).images[0]
 
             # 生成唯一的文件名
