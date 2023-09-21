@@ -1,16 +1,13 @@
-from flask import Blueprint, request, jsonify, send_file, current_app
+from controlnet_model import process_image
+from flask import Blueprint, request, jsonify, send_file
 import uuid
 import time
 
-import os
-import cv2
 
 from src.infer import infer
-from src.lora import train_lora
-from util.get_upload_img import get_all_file
-from util.image_util import get_first_image
-from src.face_fusion import image_face_fusion
-from util.virtualenv_util import activate_virtual_environment
+from src.lora import LoraPipeline, train_lora
+from util.save_photo import save_photos_to_server
+from main import app
 
 
 single_upload_bp = Blueprint('single', __name__)
@@ -37,19 +34,19 @@ def upload_photo():
         print("---------------------------")
         print("将照片保存到服务器中")
         # 保存照片到服务器中，方便後續處理
-        # save_photo_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
+        save_photos_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
 
         # 訓練人臉lora
         print("---------------------------")
         print("开始训练人脸lora......")
-        # train_lora()
+        train_lora()
 
 
         print("---------------------------")
         print("调用风格模型进行推理")
 
         # 調用風格模型
-        # process_image()
+        process_image()
 
         print("---------------------------")
         print("高清修复中......")
@@ -137,5 +134,55 @@ def process_photos(*args):
         print("接口调用到返回的时间：", execution_time, "秒")
 
         return send_file('result.png', mimetype='image/png')
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@single_upload_bp.route('/upload_test', methods=['POST'])
+def upload_photo_test():
+    start_time = time.time()
+    user_id = str(uuid.uuid4())
+
+    try:
+        # 獲取上傳的照片
+        content_type = request.content_type
+        if 'multipart/form-data' not in content_type:
+            return jsonify({'error': 'Invalid Content-Type'})
+
+        if 'photo' not in request.files:
+            return jsonify({'error': 'No photo uploaded'})
+
+        photos = request.files.getlist('photo')
+        # print(photos)
+
+        print("---------------------------")
+        print("将照片保存到服务器中")
+        # 保存照片到服务器中，方便後續處理
+        save_photos_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
+
+        # 訓練人臉lora
+        print("---------------------------")
+        print("开始训练人脸lora......")
+        lora = LoraPipeline(user_id=user_id)
+        lora.train_lora(para_num=1)
+
+        print("---------------------------")
+        print("调用风格模型进行推理")
+
+        # 調用風格模型
+        process_image()
+
+
+        print("---------------------------")
+        print("使用adetail进行人脸修复......")
+        lora.generate_ad_output()
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+
+        print("接口调用到返回的时间：", execution_time, "秒")
+        
+        return jsonify("OK")
+
+        # return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)})

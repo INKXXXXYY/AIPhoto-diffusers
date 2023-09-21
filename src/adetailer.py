@@ -1,10 +1,8 @@
 from functools import partial
 import torch
 from asdff import AdPipeline, yolo_detector
-from huggingface_hub import hf_hub_download
 from diffusers import KDPM2DiscreteScheduler
 from diffusers.utils import load_image
-from PIL import Image
 
 def generate_ad_output():
     # 引入lora（无控制）
@@ -44,7 +42,9 @@ def generate_ad_output():
     image_path = "super_test.png"
 
 
-    common = {"prompt": "realistic,1girl, smile,French hairstyle,Clear eyes, ultra realistic skin, exquisite facial features,goddess women, Off shoulder dress,Backlit, Contrast Filters, looking at viewer,",     "negative_prompt":"Two people,（deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime:1.4), text, cropped, out of frame, (worst quality, low quality:2), jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, (tree,wood:1.2), (stone:1.2), (green,black,white:1.4), (sandals:1.4),","num_inference_steps": 25}
+    common = {"prompt": "realistic,1girl, smile,French hairstyle,Clear eyes, ultra realistic skin, exquisite facial features,goddess women, Off shoulder dress,Backlit, Contrast Filters, looking at viewer,", 
+              "negative_prompt":"Two people,（deformed iris, deformed pupils, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime:1.4), text, cropped, out of frame, (worst quality, low quality:2), jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck, (tree,wood:1.2), (stone:1.2), (green,black,white:1.4), (sandals:1.4),",
+              "num_inference_steps": 25}
     images = load_image(image_path)
     result = pipe(common=common, images=[images], detectors=[person_detector, pipe.default_detector])
 
