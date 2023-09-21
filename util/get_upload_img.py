@@ -4,7 +4,7 @@ from flask import request
 from util.save_photo import save_photos_to_server
 
 
-def get_all_file(user_id,len,files,origin_path,pre_img_path):
+def get_all_file(user_id,len_num,files,origin_path,pre_img_path):
     # 创建字典来保存文件数据
     file_dict = {}
 
@@ -13,7 +13,7 @@ def get_all_file(user_id,len,files,origin_path,pre_img_path):
     print("-----------------------------------------------------------------")
     print("將照片保存到服務器")
 
-    for i in range(1, len+1):
+    for i in range(1, len_num+1):
         parameter_name = f'photo_{i}'
         file_list = files.getlist(parameter_name)
         file_dict[parameter_name] = file_list

@@ -53,7 +53,7 @@ class ModelManager:
             for key, value in kwargs.items():
                 setattr(model, key, value)
 
-    def process_image_with_models(self, user_id: str,config_file: str, diffuser_model_ids: List[str], num_inference_steps: int,
+    def process_image_with_models(self, user_id: str,diffuser_model_ids: List[str], num_inference_steps: int,
                                   width: int, height: int):
-        self.image_generator.generate_basic_image(user_id, config_file, diffuser_model_ids, num_inference_steps,
+        self.image_generator.generate_basic_image(user_id, diffuser_model_ids, num_inference_steps,
                                             width, height)
