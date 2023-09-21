@@ -1,11 +1,11 @@
-from controlnet_model import process_image
-from flask import Blueprint, request, jsonify, send_file
+# from controlnet_model import process_image
+from flask import Blueprint, request, jsonify, send_file, current_app
 import uuid
 import time
 
 
 from src.infer import infer
-from src.lora import LoraPipeline, train_lora
+from src.lora import LoraPipeline
 from util.get_upload_img import get_all_file
 from util.save_photo import save_photos_to_server
 from main import app
@@ -174,8 +174,8 @@ def upload_photo_test():
         print("调用风格模型进行推理")
 
         # 調用風格模型
-        process_image()
-
+        # process_image()
+        infer(user_id)
 
         print("---------------------------")
         print("使用adetail进行人脸修复......")
