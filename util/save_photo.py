@@ -8,7 +8,7 @@ from util.face_detector import detect_faces
 def save_photos_to_server(user_id, param_name,file_list, upload_folder, pretech_folder):
     # 构建保存路径
     save_path = os.path.join(upload_folder, user_id,str(param_name))
-    save_pre_path = os.path.join(pretech_folder, user_id, str(param_name),"10_face/")
+    save_pre_path = os.path.join(pretech_folder, user_id, str(param_name),"1_face/")
 
     # 检查文件夹是否存在，如果不存在则创建它
     os.makedirs(save_path, exist_ok=True)

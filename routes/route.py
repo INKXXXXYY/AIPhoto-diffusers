@@ -8,7 +8,7 @@ from src.infer import infer
 from src.lora import LoraPipeline
 from util.get_upload_img import get_all_file
 from util.save_photo import save_photos_to_server
-from main import app
+# from main import app
 
 
 single_upload_bp = Blueprint('single', __name__)
@@ -130,7 +130,7 @@ def process_photos(*args):
         # 调用风格模型进行推理等处理
         print("---------------------------")
         print("调用风格模型进行推理")
-        infer(user_id)
+        infer(user_id,len(files))
 
         # 返回处理后的结果
         end_time = time.time()
@@ -153,21 +153,21 @@ def upload_photo_test():
         if 'multipart/form-data' not in content_type:
             return jsonify({'error': 'Invalid Content-Type'})
 
-        if 'photo' not in request.files:
+        if 'photo_1' not in request.files:
             return jsonify({'error': 'No photo uploaded'})
 
-        photos = request.files.getlist('photo')
+        files = request.files
         # print(photos)
 
         print("---------------------------")
         print("将照片保存到服务器中")
         # 保存照片到服务器中，方便後續處理
-        save_photos_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
+        get_all_file(user_id, len(files),files, current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
 
         # 訓練人臉lora
         print("---------------------------")
         print("开始训练人脸lora......")
-        lora = LoraPipeline(user_id=user_id)
+        lora = LoraPipeline(user_id=user_id,len_num=len(files))
         lora.train_lora(para_num=1)
 
         print("---------------------------")
@@ -175,7 +175,7 @@ def upload_photo_test():
 
         # 調用風格模型
         # process_image()
-        infer(user_id)
+        infer(user_id,len(files))
 
         print("---------------------------")
         print("使用adetail进行人脸修复......")

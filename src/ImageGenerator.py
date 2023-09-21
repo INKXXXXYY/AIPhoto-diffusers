@@ -85,6 +85,9 @@ class ImageGenerator:
                 # print("qqqqqqqqqqqqqqqqqqqqqqqqqqq")
                 print(f"Processed image saved at {output_image_path}")
 
+                print("运行完后释放显存")
+                torch.cuda.empty_cache()
+
                 print("--------------------------------------------")
                 print("對圖像進行超分修復")
                 self.upscale_image(user_id,model_id,output_image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5)
@@ -106,7 +109,7 @@ class ImageGenerator:
         pipe = StableDiffusionImg2ImgPipeline.from_pretrained(self.model_manager.get_model_path(model_id), torch_dtype=torch.float16)
 
         # 将模型转移到GPU上进行推理
-        device = "cuda"
+        device = torch.device("cuda:1")
         pipe = pipe.to(device)
 
         # 使用 diffuser_model 处理图像
