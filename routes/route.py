@@ -16,6 +16,7 @@ from util.virtualenv_util import activate_virtual_environment
 single_upload_bp = Blueprint('single', __name__)
 people_upload_bp = Blueprint('people', __name__)
 
+
 @single_upload_bp.route('/upload', methods=['POST'])
 # @app.route('/upload', methods=['POST'])
 def upload_photo():
@@ -28,16 +29,18 @@ def upload_photo():
         if 'multipart/form-data' not in content_type:
             return jsonify({'error': 'Invalid Content-Type'})
 
-        if 'photo' not in request.files:
+        if 'photo_1' not in request.files:
             return jsonify({'error': 'No photo uploaded'})
 
-        photos = request.files.getlist('photo')
+        files = request.files
+
+        # photos = request.files.getlist('photo_1')
         # print(photos)
 
         print("---------------------------")
         print("将照片保存到服务器中")
         # 保存照片到服务器中，方便後續處理
-        # save_photo_to_server(user_id,photos,app.config['UPLOAD_FOLDER'], app.config['PRETECT_FOLDER'])
+        get_all_file(user_id, len(files),files,current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
 
         # 訓練人臉lora
         print("---------------------------")
@@ -118,7 +121,7 @@ def process_photos(*args):
         files = request.files
 
         # 保存上传的文件并进行預处理
-        # get_all_file(user_id, len(files),files, current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
+        get_all_file(user_id, len(files),files, current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
 
         # 训练人脸Lora
         print("-----------------------------------------------------------------")

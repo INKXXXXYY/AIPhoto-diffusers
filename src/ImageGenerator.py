@@ -65,14 +65,16 @@ class ImageGenerator:
                     # 生成唯一的文件名
                     now = datetime.now()
                     timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-                    output_image_path = f"user/output/{user_id}/{model_id}_{timestamp_str}.png"
+                    # output_image_path = f"user/output/generate_basic_image/{user_id}/{model_id}/{model_id}_{timestamp_str}.png"
+                    output_image_path = os.path.join("user", "output", "generate_basic_image", user_id, model_id,
+                                                     f"{model_id}_{timestamp_str}.png")
 
                     # 如果输出目录不存在则创建
                     os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
 
                     # 保存输出图像
                     output_image.save(output_image_path)
-                    print("qqqqqqqqqqqqqqqqqqqqqqqqqqq")
+                    # print("qqqqqqqqqqqqqqqqqqqqqqqqqqq")
                     print(f"Processed image saved at {output_image_path}")
 
                     print("--------------------------------------------")
@@ -121,7 +123,9 @@ class ImageGenerator:
             # 生成唯一的文件名
             now = datetime.now()
             timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-            output_image_path = f"user/output/{user_id}/super_{model_id}_{timestamp_str}.png"
+            # output_image_path = f"user/output/upscale_image/{user_id}/{model_id}/super_{model_id}_{timestamp_str}.png"
+            output_image_path = os.path.join("user", "output", "upscale_image", user_id, model_id,
+                                             f"super_{model_id}_{timestamp_str}.png")
 
             # 如果输出目录不存在则创建
             os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
