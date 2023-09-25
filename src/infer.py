@@ -1,6 +1,9 @@
+import os
+
 from src.ModelManager import ModelManager
 
 def infer(user_id,len_num):
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     if len_num>1:
         manager = ModelManager()
@@ -34,7 +37,7 @@ def infer(user_id,len_num):
         manager.process_image_with_models(
             user_id,
             ["fashi"],
-            num_inference_steps=20,
+            num_inference_steps=30,
             width=512,
             height=768
         )

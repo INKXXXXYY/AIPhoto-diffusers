@@ -4,7 +4,7 @@ from diffusers import StableDiffusionPipeline
 def generate_image():
 
 
-    text2img_pipe = StableDiffusionPipeline.from_pretrained("/root/autodl-tmp/diffusers_model/real_fashi").to("cuda:1")
+    text2img_pipe = StableDiffusionPipeline.from_pretrained("/root/autodl-tmp/diffusers_model/real_fashi")
 
 
     # text2img_pipe.unload_lora_weights()
@@ -48,7 +48,7 @@ def generate_image():
     image = text2img_pipe(
         prompt = prompt
         , negative_prompt = negative_prompt
-        , generator = torch.Generator("cuda:1")
+        , generator = torch.Generator("cuda")
         , num_inference_steps = 28
         , guidance_scale = 7
         , width = 1024

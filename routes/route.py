@@ -99,6 +99,8 @@ people_upload_bp = Blueprint('people', __name__)
 #     except Exception as e:
 #         return jsonify({'error': str(e)})
 
+
+
 @people_upload_bp.route('/people_upload', methods=['POST'])
 def process_photos(*args):
     start_time = time.time()
@@ -146,6 +148,8 @@ def process_photos(*args):
 def upload_photo_test():
     start_time = time.time()
     user_id = str(uuid.uuid4())
+    # user_id = "0242f287-9838-4248-a13d-c6ac27610c76"
+    # 16cc4b86-bbfb-4e2d-9586-0bc00fac942e
 
     try:
         # 獲取上傳的照片
@@ -157,18 +161,20 @@ def upload_photo_test():
             return jsonify({'error': 'No photo uploaded'})
 
         files = request.files
+        gender=request.form
+        print(request.form)
         # print(photos)
 
         print("---------------------------")
         print("将照片保存到服务器中")
         # 保存照片到服务器中，方便後續處理
-        get_all_file(user_id, len(files),files, current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
+        get_all_file(user_id, len(files),files,gender, current_app.config['UPLOAD_FOLDER'], current_app.config['PRETECT_FOLDER'])
 
         # 訓練人臉lora
         print("---------------------------")
         print("开始训练人脸lora......")
         lora = LoraPipeline(user_id=user_id,len_num=len(files))
-        lora.train_lora(para_num=1)
+        # lora.train_lora(para_num=1)
 
         print("---------------------------")
         print("调用风格模型进行推理")
