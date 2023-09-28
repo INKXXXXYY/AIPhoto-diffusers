@@ -19,14 +19,6 @@ class ImageGenerator:
 
     def generate_basic_image(self, user_id: str,diffuser_model_ids: List[str], num_inference_steps: int,
                        width: int, height: int):
-        # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-        # # 读取配置文件
-        # with open(config_file, "r") as f:
-        #     config = json.load(f)
-        # print("读取config文件")
-
-        # warnings.filterwarnings("ignore", category=FutureWarning)
 
         # 在开始时尝试释放任何未使用的显存
         torch.cuda.empty_cache()
@@ -101,14 +93,15 @@ class ImageGenerator:
                     individual_image.save(individual_output_path)
                     print(f"Processed image #{idx + 1} saved at {individual_output_path}")
 
-                    print("运行完后释放显存")
-                    del output_image  # 删除已经保存的图像，因为它可能会占用大量显存
-                    torch.cuda.empty_cache()
-                    gc.collect()  # 强制进行Python的垃圾回收
 
                     print("--------------------------------------------")
                     print("對圖像進行超分修復")
                     self.sp_image(user_id,model_id,individual_output_path,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5)
+
+                print("运行完后释放显存")
+                del output_image  # 删除已经保存的图像，因为它可能会占用大量显存
+                torch.cuda.empty_cache()
+                gc.collect()  # 强制进行Python的垃圾回收
 
 
             except Exception as e:
