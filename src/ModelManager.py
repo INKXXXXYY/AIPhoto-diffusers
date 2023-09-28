@@ -9,6 +9,8 @@ from diffusers import StableDiffusionControlNetPipeline, ControlNetModel
 from diffusers import DPMSolverMultistepScheduler
 import warnings
 
+from transformers import CLIPTextModel
+
 from src.ImageGenerator import ImageGenerator
 
 
@@ -22,17 +24,25 @@ class ModelManager:
     def add_model(self, model_id: str, model_path: str):
         # 添加一个模型
         if model_id == "pose_model":
-            model = ControlNetModel.from_pretrained(model_path, torch_dtype=torch.float16)
+            model = ControlNetModel.from_pretrained(model_path, conditioning_scale =1.5,torch_dtype=torch.float16)
             self.models[model_id] = model
             self.model_paths[model_id] = model_path
-            print("成功添加", model_id)
+        elif model_id == "canny_model":
+            model = ControlNetModel.from_pretrained(model_path, conditioning_scale =1.5,torch_dtype=torch.float16)
+            self.models[model_id] = model
+            self.model_paths[model_id] = model_path
         else:
-            controlnet = self.models.get("pose_model")
-            model = StableDiffusionControlNetPipeline.from_pretrained(model_path, controlnet=controlnet,
+            controlnet = [self.models.get("pose_model"),self.models.get("canny_model")]
+            text_encoder = CLIPTextModel.from_pretrained(model_path, subfolder="text_encoder",
+                                                         num_hidden_layers=11, torch_dtype=torch.float16)
+
+            model = StableDiffusionControlNetPipeline.from_pretrained(model_path, controlnet=controlnet,text_encoder = text_encoder,
+
                                                                       torch_dtype=torch.float16)
+            # model.text_encoder_name=text_encoder
             self.models[model_id] = model
             self.model_paths[model_id] = model_path
-            print("成功添加", model_id)
+        print("成功添加", model_id)
 
     def get_model_path(self, model_id: str) -> str:
         # 获取模型路径

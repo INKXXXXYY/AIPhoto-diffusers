@@ -1,3 +1,4 @@
+import gc
 from datetime import datetime
 import json
 import os
@@ -27,6 +28,9 @@ class ImageGenerator:
 
         # warnings.filterwarnings("ignore", category=FutureWarning)
 
+        # 在开始时尝试释放任何未使用的显存
+        torch.cuda.empty_cache()
+
         # 循环遍历 diffuser_model_ids 列表中的模型ID，并逐步叠加
         for model_id in diffuser_model_ids:
             model_config_file = os.path.join(self.model_manager.get_model_path(model_id), f"config.json")
@@ -44,6 +48,10 @@ class ImageGenerator:
             pose_image_path = model_config["config"]["pose_image"]
             pose_image = Image.open(f"{self.model_manager.get_model_path(model_id)}/{pose_image_path}").convert("RGB")
             print("成功导入骨架图")
+
+            canny_image_path = model_config["config"]["canny_image"]
+            canny_image = Image.open(f"{self.model_manager.get_model_path(model_id)}/{canny_image_path}").convert("RGB")
+            print("成功导入canny线稿")
 
             prompt = model_config["config"]["prompt"]
             negative_prompt = model_config["config"]["negative_prompt"]
@@ -65,37 +73,42 @@ class ImageGenerator:
                 # 使用 diffuser_model 处理图像
                 output_image = pipe(
                     prompt if isinstance(prompt, str) else [prompt],  # 确保 prompt 是 str 或包含字符串的列表
-                    pose_image,
+                    image=[pose_image,canny_image],
                     # generator=generator.manual_seed(generator_seed),
                     generator=generator,
                     negative_prompt=negative_prompt,
                     # generator_seed=generator_seed,
                     num_inference_steps=num_inference_steps,
+                    # guidance_rescale = 0.7,
+                    num_images_per_prompt=10,
                     width=width,
-                    height=height
-                ).images[0]
+                    height=height,
+                    controlnet_conditioning_scale=[0.8, 0.8],
+                )
 
-                # 生成唯一的文件名
-                now = datetime.now()
-                timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-                # output_image_path = f"user/output/generate_basic_image/{user_id}/{model_id}/{model_id}_{timestamp_str}.png"
-                output_image_path = os.path.join(current_app.config['OUTPUT_FOLDER'], "generate_basic_image", user_id, model_id,
-                                                 f"{model_id}_{timestamp_str}.png")
+                for idx, individual_image in enumerate(output_image.images):
+                    # 生成唯一的文件名 for each individual image
+                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    individual_output_path = os.path.join(
+                        current_app.config['OUTPUT_FOLDER'], "generate_basic_image", user_id, model_id,
+                        f"{model_id}_{timestamp_str}_{idx}.png"  # Adding idx to differentiate the images
+                    )
 
-                # 如果输出目录不存在则创建
-                os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
+                    # 如果输出目录不存在则创建
+                    os.makedirs(os.path.dirname(individual_output_path), exist_ok=True)
 
-                # 保存输出图像
-                output_image.save(output_image_path)
-                # print("qqqqqqqqqqqqqqqqqqqqqqqqqqq")
-                print(f"Processed image saved at {output_image_path}")
+                    # 保存输出图像
+                    individual_image.save(individual_output_path)
+                    print(f"Processed image #{idx + 1} saved at {individual_output_path}")
 
-                print("运行完后释放显存")
-                torch.cuda.empty_cache()
+                    print("运行完后释放显存")
+                    del output_image  # 删除已经保存的图像，因为它可能会占用大量显存
+                    torch.cuda.empty_cache()
+                    gc.collect()  # 强制进行Python的垃圾回收
 
-                print("--------------------------------------------")
-                print("對圖像進行超分修復")
-                self.sp_image(user_id,model_id,output_image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5)
+                    print("--------------------------------------------")
+                    print("對圖像進行超分修復")
+                    self.sp_image(user_id,model_id,individual_output_path,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5)
 
 
             except Exception as e:
@@ -103,87 +116,34 @@ class ImageGenerator:
                 error_message = f"An error occurred while processing the image with model {model_id}: {e}"
                 print(error_message)
 
-    # def sp_image(self,user_id,model_id,image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5):
-    #
-    #     warnings.filterwarnings("ignore", category=FutureWarning)
-    #
-    #     print("正在使用", model_id, "进行高清修復")
-    #
-    #     # 加载 diffuser 模型
-    #     pipe = self.model_manager.models.get(model_id)
-    #     pipe = StableDiffusionImg2ImgPipeline.from_pretrained(self.model_manager.get_model_path(model_id), torch_dtype=torch.float16)
-    #
-    #     # 将模型转移到GPU上进行推理
-    #     # device = torch.device("cuda")
-    #     # pipe.load_textual_inversion("root/autodl-tmp/4x-UltraSharp.pth")
-    #     pipe = pipe.to("cuda")
-    #
-    #     # 使用 diffuser_model 处理图像
-    #     try:
-    #         # 打开图像
-    #         # image = Image.open(image_path)
-    #         # 放大算法
-    #         image = image.resize((1024, 1536))
-    #         # image=self.upscale_image(user_id, self.upscale_model_path, image)
-    #
-    #         print("输入照片进行修复")
-    #         images = pipe(
-    #             prompt=prompt,
-    #             negative_prompt=negative_prompt,
-    #             image=image,
-    #             strength=0.3,
-    #             guidance_scale=guidance_scale,
-    #             num_inference_steps=num_inference_steps,
-    #             # width=1024,
-    #             # height=1536
-    #         ).images[0]
-    #
-    #         # 生成唯一的文件名
-    #         now = datetime.now()
-    #         timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-    #         # output_image_path = f"user/output/upscale_image/{user_id}/{model_id}/super_{model_id}_{timestamp_str}.png"
-    #         output_image_path = os.path.join(current_app.config['OUTPUT_FOLDER'], "upscale_image", user_id, model_id,
-    #                                          f"super_{model_id}_{timestamp_str}.png")
-    #
-    #         # 如果输出目录不存在则创建
-    #         os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
-    #
-    #         # 保存输出图像
-    #         images.save(output_image_path)
-    #         print(f"Processed image saved at {output_image_path}")
-    #
-    #
-    #     except Exception as e:
-    #         # 捕获并记录异常
-    #         error_message = f"An error occurred while processing the image with model {model_id}: {e}"
-    #         print(error_message)
+    def sp_image(self,user_id,model_id,image_path,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5):
 
-
-    def sp_image(self,user_id,model_id,image,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5):
+        image = Image.open(image_path).convert("RGB")
 
         warnings.filterwarnings("ignore", category=FutureWarning)
 
         print("正在使用", model_id, "进行高清修復")
 
         # 加载 diffuser 模型
-        model_id = "root/autodl-tmp/stable-diffusion-x4-upscaler"
-        pipeline = StableDiffusionUpscalePipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+        # pipe = self.model_manager.models.get(model_id)
+        pipe = StableDiffusionImg2ImgPipeline.from_pretrained(self.model_manager.get_model_path(model_id), torch_dtype=torch.float16)
 
         # 将模型转移到GPU上进行推理
         # device = torch.device("cuda")
         # pipe.load_textual_inversion("root/autodl-tmp/4x-UltraSharp.pth")
-        pipeline = pipeline.to("cuda")
+        pipe = pipe.to("cuda")
 
         # 使用 diffuser_model 处理图像
         try:
             # 打开图像
+
             # image = Image.open(image_path)
             # 放大算法
-            image = image.resize((1024, 1536))
+            # image = image.resize((1024, 1536))
             # image=self.upscale_image(user_id, self.upscale_model_path, image)
 
             print("输入照片进行修复")
-            images = pipeline(
+            images = pipe(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 image=image,
@@ -213,6 +173,67 @@ class ImageGenerator:
             # 捕获并记录异常
             error_message = f"An error occurred while processing the image with model {model_id}: {e}"
             print(error_message)
+
+
+    # def sp_image(self,user_id,model_id,image_path,prompt,negative_prompt,num_inference_steps,guidance_scale=7.5):
+    #
+    #     # 在结束时再次尝试释放任何未使用的显存
+    #     torch.cuda.empty_cache()
+    #     image = Image.open(image_path).convert("RGB")
+    #
+    #     warnings.filterwarnings("ignore", category=FutureWarning)
+    #
+    #     print("正在使用", model_id, "进行高清修復")
+    #
+    #     # 加载 diffuser 模型
+    #     model_path = "/root/autodl-tmp/stable-diffusion-x4-upscaler"
+    #     pipeline = StableDiffusionUpscalePipeline.from_pretrained(model_path, torch_dtype=torch.float16)
+    #     # 将模型转移到GPU上进行推理
+    #     # device = torch.device("cuda")
+    #     # pipe.load_textual_inversion("root/autodl-tmp/4x-UltraSharp.pth")
+    #     pipeline = pipeline.to("cuda")
+    #
+    #     # 使用 diffuser_model 处理图像
+    #     try:
+    #         with torch.no_grad():
+    #
+    #             # 打开图像
+    #             # image = Image.open(image_path)
+    #             # 放大算法
+    #             image = image.resize((1024, 1536))
+    #             # image=self.upscale_image(user_id, self.upscale_model_path, image)
+    #
+    #             print("输入照片进行修复")
+    #             images = pipeline(
+    #                 prompt=prompt,
+    #                 negative_prompt=negative_prompt,
+    #                 image=image,
+    #                 # strength=0.3,
+    #                 guidance_scale=guidance_scale,
+    #                 num_inference_steps=num_inference_steps,
+    #                 # width=1024,
+    #                 # height=1536
+    #             ).images[0]
+    #
+    #             # 生成唯一的文件名
+    #             now = datetime.now()
+    #             timestamp_str = now.strftime("%Y%m%d_%H%M%S")
+    #             # output_image_path = f"user/output/upscale_image/{user_id}/{model_id}/super_{model_id}_{timestamp_str}.png"
+    #             output_image_path = os.path.join(current_app.config['OUTPUT_FOLDER'], "upscale_image", user_id, model_id,
+    #                                              f"super_{model_id}_{timestamp_str}.png")
+    #
+    #             # 如果输出目录不存在则创建
+    #             os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
+    #
+    #             # 保存输出图像
+    #             images.save(output_image_path)
+    #             print(f"Processed image saved at {output_image_path}")
+    #
+    #
+    #     except Exception as e:
+    #         # 捕获并记录异常
+    #         error_message = f"An error occurred while processing the image with model {model_id}: {e}"
+    #         print(error_message)
 
 
     def upscale_image(self,user_id, model_path, image):

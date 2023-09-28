@@ -8,8 +8,12 @@ def activate_virtual_environment(venv_name,tem_image,user_img,output_path):
     # 切换到另一个虚拟环境（假设虚拟环境路径为 /path/to/new_environment）
     env = {'PATH': '/root/autodl-tmp/miniconda3/envs/modelscope/bin:' + os.environ['PATH']}
 
+
+    print(tem_image)
+    print(user_img)
     # 调用 Python 文件（假设文件路径为 path/to/file.py）
     python_command = f"python /root/autodl-tmp/aifamily_demo/src/face_fusion.py '{tem_image}' '{user_img}' '{output_path}'"
+    print(python_command)
 
     # 在子进程中执行命令
     subprocess.run(python_command, env=env, shell=True)

@@ -1,6 +1,7 @@
 import json
 import subprocess
 import os
+from datetime import datetime
 
 from functools import partial
 import torch
@@ -54,10 +55,11 @@ class LoraPipeline:
             print("error: user data does not exist")
 
         for num in range(para_num):
-            # 构建新的 train_data_dir
             output_path = os.path.join(
                 self.lora_model_path, self.user_id
             )
+
+            # 构建新的 train_data_dir
             modified_train_data_dir = os.path.join(
                 train_data_dir, str(num + 1)
             )
@@ -264,17 +266,24 @@ class LoraPipeline:
                             if os.path.isdir(model_dir):  # 确保是文件夹
                                 pipe = AdPipeline.from_pretrained(
                                     model_dir, torch_dtype=torch.float16
-                                )
+                                ).to("cuda")
                                 print("成功建立ad_pipe")
                                 print(self.lora_output_path)
 
                                 # 这玩意现在还是单人的，没有遍历lora文件。。
                                 print(os.path.join(self.lora_output_path,self.user_id,f"{self.user_id}_0"))
-                                # pipe.load_lora_weights(os.path.join(self.lora_output_path,self.user_id,f"{self.user_id}_0.safetensors"))
+
+                                # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                                # lora_weights = torch.load(
+                                #     os.path.join(self.lora_output_path, self.user_id, f"{self.user_id}_0.safetensors"),
+                                #     map_location=device)
+                                # pipe.load_lora_weights(lora_weights)
+
+                                pipe.load_lora_weights(os.path.join(self.lora_output_path,self.user_id,f"{self.user_id}_0.safetensors"))
 
                                 pipe.safety_checker = None
 
-                                lora_w = 1.5
+                                lora_w = 1
                                 pipe._lora_scale = lora_w
                                 print("lora接入成功！")
 
@@ -325,8 +334,8 @@ class LoraPipeline:
                                 model_id = common["model_id"]
                                 common = common["config"]
                                 new_commmon = {
-                                    "prompt": common["prompt"],
-                                    "negative_prompt": common["negative_prompt"]
+                                    "prompt": "",
+                                    "negative_prompt": ""
                                 }
                                 generate_basic_image_path = os.path.join(
                                     self.base_path,
@@ -338,51 +347,50 @@ class LoraPipeline:
                                 )
 
                                 for file in os.listdir(generate_basic_image_path):
-                                    print("循环修复文件夹中人脸")
-                                    image_path = os.path.join(generate_basic_image_path, file)
-                                    images = load_image(image_path)
-                                    result = pipe(
-                                        common=new_commmon,
-                                        images=[images],
-                                        detectors=[person_detector, pipe.default_detector]
-                                        # generator=generator
-                                    ).images
+                                    if file != ".ipynb_checkpoints":
+                                        print("循环修复文件夹中人脸")
+                                        image_path = os.path.join(generate_basic_image_path, file)
+                                        images = load_image(image_path)
+                                        result = pipe(
+                                            common=new_commmon,
+                                            images=[images],
+                                            detectors=[person_detector, pipe.default_detector]
+                                            # generator=generator
+                                        ).images
 
-                                    print("保存")
-                                    ad_output_path = os.path.join(
-                                        self.base_path,
-                                        "user",
-                                        "output",
-                                        "ad_output",
-                                        self.user_id,
-                                        model_id
-                                    )
-                                    # 创建路径
-                                    if not os.path.exists(ad_output_path):
-                                        os.makedirs(ad_output_path, exist_ok=True)
-                                        print(f"路径 {ad_output_path} 创建成功")
+                                        print("保存")
+                                        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-                                    for img in result:
-                                        img.save(os.path.join(ad_output_path, f"{self.user_id}_{model_id}.png"))
-                                        # result.save(ad_output_path)
-                                    print("保存至", ad_output_path)
-                                    ff_output_path = os.path.join(
-                                        self.base_path, "user", "output", "ff_output", self.user_id, model_id
-                                    )
-                                    # img.save(ad_output_path)
-                                    # print()
-                                    self.image_face_fusion(
-                                        ad_image_path=os.path.join(ad_output_path, f"{self.user_id}_{model_id}.png"),
-                                        output_path=ff_output_path, model_id=model_id)
-                                    # image_face_fusion()
-                                # for img in result.images:
+                                        ad_output_path = os.path.join(
+                                            self.base_path,
+                                            "user",
+                                            "output",
+                                            "ad_output",
+                                            self.user_id,
+                                            model_id
+                                        )
+                                        # 创建路径
+                                        if not os.path.exists(ad_output_path):
+                                            os.makedirs(ad_output_path, exist_ok=True)
+                                            print(f"路径 {ad_output_path} 创建成功")
+
+                                        for img in result:
+                                            img.save(os.path.join(ad_output_path, f"{self.user_id}_{timestamp_str}_{model_id}.png"))
+                                            # result.save(ad_output_path)
+                                        print("保存至", ad_output_path)
+                                        ff_output_path = os.path.join(
+                                            self.base_path, "user", "output", "ff_output", self.user_id, model_id
+                                        )
+                                        # img.save(ad_output_path)
+                                        # print()
+                                        self.image_face_fusion(
+                                            ad_image_path=os.path.join(ad_output_path, f"{self.user_id}_{timestamp_str}_{model_id}.png"),
+                                            output_path=ff_output_path, model_id=model_id)
+                                        # image_face_fusion()
+                                    # for img in result.images:
 
     def image_face_fusion(self, ad_image_path:str, output_path:str,model_id:str):
-
-        # 这里假设'pipeline'和'Tasks'已经被正确导入
-        # image_face_fusion_pipeline = pipeline(
-        #     Tasks.image_face_fusion, model="damo/cv_unet-image-face-fusion_damo"
-        # )
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # 创建路径
         if not os.path.exists(output_path):
@@ -392,12 +400,12 @@ class LoraPipeline:
 
         # 读取 ad 处理后的照片
         from util.image_util import get_first_image
-        user_path = os.path.join(self.base_path, "user", "detected", self.user_id, "1", "10_face")
+        user_path = os.path.join(self.base_path, "user", "origin", self.user_id, "1")
         user_image_path = get_first_image(user_path)
 
         #         # 调用工具函数来切换虚拟环境
         virtual_env_name = "modelscope"
-        activate_virtual_environment(virtual_env_name,ad_image_path,user_image_path,os.path.join(output_path,f"{self.user_id}_{model_id}.png"))
+        activate_virtual_environment(virtual_env_name,ad_image_path,user_image_path,os.path.join(output_path,f"{self.user_id}_{timestamp_str}_{model_id}.png"))
         # image_face_fusion(ad_image_path,user_image_path,os.path.join(output_path,f"{self.user_id}_{model_id}.png"))
         #
         # result = image_face_fusion_pipeline(
