@@ -53,7 +53,7 @@ class ImageGenerator:
             # 加载 diffuser 模型
             pipe = self.model_manager.models.get(model_id)
 
-            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config,use_karras_sigmas=True,algorithm_type="sde-dpmsolver++")
             pipe.enable_model_cpu_offload()
 
             # generator = torch.Generator(device="cuda:1").manual_seed(2)

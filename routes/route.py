@@ -161,7 +161,11 @@ def upload_photo_test():
 
         files = request.files
         gender=request.form
+        model_selected = request.form.getlist('model_id[]')
+
         print(request.form)
+        print(gender)
+        print(model_selected)
         # print(photos)
 
         print("---------------------------")
@@ -179,7 +183,7 @@ def upload_photo_test():
         print("调用风格模型进行推理")
 
         # 調用風格模型
-        infer(user_id,len(files))
+        infer(user_id,len(files),model_selected)
 
         print("---------------------------")
         print("使用adetail进行人脸修复......")
